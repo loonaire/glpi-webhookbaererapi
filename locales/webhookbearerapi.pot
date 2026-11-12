@@ -1,0 +1,188 @@
+# Webhook Bearer API plugin for GLPI.
+# This file is distributed under the same license as the webhookbearerapi package.
+#
+msgid ""
+msgstr "Project-Id-Version: webhookbearerapi 1.0\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-11-12 12:00+0000\nPO-Revision-Date: 2026-11-12 12:00+0000\nLast-Translator: \nLanguage-Team: \nLanguage: \nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nnplurals=2; plural=(n != 1);\n"
+
+msgid "\"%1$d tokens could not be refreshed (see the \"%2$s\" log file)"
+msgstr "\""
+
+msgid "\"%1$d/%2$d bearer tokens refreshed"
+msgstr "\""
+
+msgid "\"A token provider is already configured for this webhook (%1$s)."
+msgstr "\""
+
+msgid "\"A valid token URL is required."
+msgstr "\""
+
+msgid "\"Additional parameters (JSON)"
+msgstr "\""
+
+msgid "\"Authentication"
+msgstr "\""
+
+msgid "\"Bearer API"
+msgid_plural "\"Bearer APIs"
+msgstr[0] "\""
+msgstr[1] "\""
+
+msgid "\"Bearer token"
+msgstr "\""
+
+msgid "\"Bearer token header"
+msgstr "\""
+
+msgid "\"Client credentials (OAuth2)"
+msgstr "\""
+
+msgid "\"Client credentials in the request body"
+msgstr "\""
+
+msgid "\"Client credentials method"
+msgstr "\""
+
+msgid "\"Client secret"
+msgstr "\""
+
+msgid "\"Default validity duration (seconds)"
+msgstr "\""
+
+msgid "\"Expiration delay field"
+msgstr "\""
+
+msgid "\"Expired"
+msgstr "\""
+
+msgid "\"Expired since %s"
+msgstr "\""
+
+msgid "\"Grant type"
+msgstr "\""
+
+msgid "\"HTTP Basic authorization header"
+msgstr "\""
+
+msgid "\"Header name"
+msgstr "\""
+
+msgid "\"Last error"
+msgstr "\""
+
+msgid "\"Last error: %s"
+msgstr "\""
+
+msgid "\"Last refresh: %s"
+msgstr "\""
+
+msgid "\"Last token refresh"
+msgstr "\""
+
+msgid "\"No bearer token found in the response (looked for \"%s\")."
+msgstr "\""
+
+msgid "\"No token"
+msgstr "\""
+
+msgid "\"No token provider for this webhook."
+msgstr "\""
+
+msgid "\"No token yet"
+msgstr "\""
+
+msgid "\"Password (OAuth2 resource owner password credentials)"
+msgstr "\""
+
+msgid "\"Refresh margin (seconds)"
+msgstr "\""
+
+msgid "\"Refresh the bearer tokens of the APIs used by the webhooks"
+msgstr "\""
+
+msgid "\"Refresh token now"
+msgstr "\""
+
+msgid "\"Retrieval of the bearer tokens of the API endpoints"
+msgstr "\""
+
+msgid "\"Scope"
+msgid_plural "\"Scopes"
+msgstr[0] "\""
+msgstr[1] "\""
+
+msgid "\"The additional parameters must be a valid JSON object."
+msgstr "\""
+
+msgid "\"The bearer token has been refreshed."
+msgstr "\""
+
+msgid "\"The token URL is not configured."
+msgstr "\""
+
+msgid "\"The token is renewed this much time before its expiration."
+msgstr "\""
+
+msgid "\"The token response is not a valid JSON object."
+msgstr "\""
+
+msgid "\"The username and password are required for the \"Password\" grant type."
+msgstr "\""
+
+msgid "\"Token URL"
+msgstr "\""
+
+msgid "\"Token expiration"
+msgstr "\""
+
+msgid "\"Token field"
+msgstr "\""
+
+msgid "\"Token prefix"
+msgstr "\""
+
+msgid "\"Token request content type"
+msgstr "\""
+
+msgid "\"Token response parsing"
+msgstr "\""
+
+msgid "\"Token status"
+msgstr "\""
+
+msgid "\"Unable to refresh the bearer token: %s"
+msgstr "\""
+
+msgid "\"User"
+msgid_plural "\"Users"
+msgstr[0] "\""
+msgstr[1] "\""
+
+msgid "\"Valid"
+msgstr "\""
+
+msgid "\"Valid until %s"
+msgstr "\""
+
+msgid "\"Webhook"
+msgid_plural "\"Webhooks"
+msgstr[0] "\""
+msgstr[1] "\""
+
+msgid "\"Webhook Bearer API"
+msgstr "\""
+
+msgid "API authentication source"
+msgstr ""
+
+msgid "Bearer API plugin"
+msgstr ""
+
+msgid "Native GLPI (OAuth 2.0)"
+msgstr ""
+
+msgid "The webhook authenticates with the OAuth 2.0 parameters defined in the \"Security\" tab. This plugin does not add any token."
+msgstr ""
+
+msgid "The webhook is authenticated with a token managed by this plugin (see the \"Bearer tokens\" tab). The \"Use OAuth\" option of the \"Security\" tab is then disabled."
+msgstr ""
+

@@ -1,0 +1,188 @@
+# Webhook Bearer API plugin for GLPI.
+# This file is distributed under the same license as the webhookbearerapi package.
+#
+msgid ""
+msgstr "Project-Id-Version: webhookbearerapi 1.0\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-11-12 12:00+0000\nPO-Revision-Date: 2026-11-12 12:00+0000\nLast-Translator: \nLanguage-Team: \nLanguage: fr_FR\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nnplurals=2; plural=(n > 1);\n"
+
+msgid "\"%1$d tokens could not be refreshed (see the \"%2$s\" log file)"
+msgstr "\"%1$d jetons n'ont pas pu être rafraîchis (voir le fichier de journal « %2$s »)"
+
+msgid "\"%1$d/%2$d bearer tokens refreshed"
+msgstr "\"%1$d/%2$d jetons bearer rafraîchis"
+
+msgid "\"A token provider is already configured for this webhook (%1$s)."
+msgstr "\"Un fournisseur de jetons est déjà configuré pour ce webhook (%1$s)."
+
+msgid "\"A valid token URL is required."
+msgstr "\"Une URL de jeton valide est requise."
+
+msgid "\"Additional parameters (JSON)"
+msgstr "\"Paramètres supplémentaires (JSON)"
+
+msgid "\"Authentication"
+msgstr "\"Authentification"
+
+msgid "\"Bearer API"
+msgid_plural "\"Bearer APIs"
+msgstr[0] "\"API bearer"
+msgstr[1] "\"API bearer"
+
+msgid "\"Bearer token"
+msgstr "\"Jeton bearer"
+
+msgid "\"Bearer token header"
+msgstr "\"En-tête du jeton bearer"
+
+msgid "\"Client credentials (OAuth2)"
+msgstr "\"Identifiants client (OAuth2)"
+
+msgid "\"Client credentials in the request body"
+msgstr "\"Identifiants client dans le corps de la requête"
+
+msgid "\"Client credentials method"
+msgstr "\"Méthode d'envoi des identifiants client"
+
+msgid "\"Client secret"
+msgstr "\"Secret client"
+
+msgid "\"Default validity duration (seconds)"
+msgstr "\"Durée de validité par défaut (secondes)"
+
+msgid "\"Expiration delay field"
+msgstr "\"Champ contenant le délai d'expiration"
+
+msgid "\"Expired"
+msgstr "\"Expiré"
+
+msgid "\"Expired since %s"
+msgstr "\"Expiré depuis %s"
+
+msgid "\"Grant type"
+msgstr "\"Type d'autorisation"
+
+msgid "\"HTTP Basic authorization header"
+msgstr "\"En-tête d'autorisation HTTP Basic"
+
+msgid "\"Header name"
+msgstr "\"Nom de l'en-tête"
+
+msgid "\"Last error"
+msgstr "\"Dernière erreur"
+
+msgid "\"Last error: %s"
+msgstr "\"Dernière erreur : %s"
+
+msgid "\"Last refresh: %s"
+msgstr "\"Dernier rafraîchissement : %s"
+
+msgid "\"Last token refresh"
+msgstr "\"Dernier rafraîchissement du jeton"
+
+msgid "\"No bearer token found in the response (looked for \"%s\")."
+msgstr "\"Aucun jeton bearer trouvé dans la réponse (champ recherché : « %s »)."
+
+msgid "\"No token"
+msgstr "\"Aucun jeton"
+
+msgid "\"No token provider for this webhook."
+msgstr "\"Aucun fournisseur de jetons pour ce webhook."
+
+msgid "\"No token yet"
+msgstr "\"Aucun jeton pour le moment"
+
+msgid "\"Password (OAuth2 resource owner password credentials)"
+msgstr "\"Mot de passe (OAuth2 ressource owner password credentials)"
+
+msgid "\"Refresh margin (seconds)"
+msgstr "\"Marge de rafraîchissement (secondes)"
+
+msgid "\"Refresh the bearer tokens of the APIs used by the webhooks"
+msgstr "\"Rafraîchir les jetons bearer des API utilisées par les webhooks"
+
+msgid "\"Refresh token now"
+msgstr "\"Rafraîchir le jeton maintenant"
+
+msgid "\"Retrieval of the bearer tokens of the API endpoints"
+msgstr "\"Récupération des jetons bearer des points d'accès API"
+
+msgid "\"Scope"
+msgid_plural "\"Scopes"
+msgstr[0] "\"Portée"
+msgstr[1] "\"Portées"
+
+msgid "\"The additional parameters must be a valid JSON object."
+msgstr "\"Les paramètres supplémentaires doivent être un objet JSON valide."
+
+msgid "\"The bearer token has been refreshed."
+msgstr "\"Le jeton bearer a été rafraîchi."
+
+msgid "\"The token URL is not configured."
+msgstr "\"L'URL du jeton n'est pas configurée."
+
+msgid "\"The token is renewed this much time before its expiration."
+msgstr "\"Le jeton est renouvelé cette durée avant son expiration."
+
+msgid "\"The token response is not a valid JSON object."
+msgstr "\"La réponse de l'API ne contient pas d'objet JSON valide."
+
+msgid "\"The username and password are required for the \"Password\" grant type."
+msgstr "\"Le nom d'utilisateur et le mot de passe sont requis pour le type d'autorisation « Mot de passe »."
+
+msgid "\"Token URL"
+msgstr "\"URL du jeton"
+
+msgid "\"Token expiration"
+msgstr "\"Expiration du jeton"
+
+msgid "\"Token field"
+msgstr "\"Champ contenant le jeton"
+
+msgid "\"Token prefix"
+msgstr "\"Préfixe du jeton"
+
+msgid "\"Token request content type"
+msgstr "\"Type de contenu de la requête de jeton"
+
+msgid "\"Token response parsing"
+msgstr "\"Analyse de la réponse de l'API"
+
+msgid "\"Token status"
+msgstr "\"État du jeton"
+
+msgid "\"Unable to refresh the bearer token: %s"
+msgstr "\"Impossible de rafraîchir le jeton bearer : %s"
+
+msgid "\"User"
+msgid_plural "\"Users"
+msgstr[0] "\"Utilisateur"
+msgstr[1] "\"Utilisateurs"
+
+msgid "\"Valid"
+msgstr "\"Valide"
+
+msgid "\"Valid until %s"
+msgstr "\"Valide jusqu'au %s"
+
+msgid "\"Webhook"
+msgid_plural "\"Webhooks"
+msgstr[0] "\"Webhook"
+msgstr[1] "\"Webhooks"
+
+msgid "\"Webhook Bearer API"
+msgstr "\"Webhook Bearer API"
+
+msgid "API authentication source"
+msgstr "Source d'authentification de l'API"
+
+msgid "Bearer API plugin"
+msgstr "Plugin Bearer API"
+
+msgid "Native GLPI (OAuth 2.0)"
+msgstr "GLPI natif (OAuth 2.0)"
+
+msgid "The webhook authenticates with the OAuth 2.0 parameters defined in the \"Security\" tab. This plugin does not add any token."
+msgstr "Le webhook s'authentifie avec les paramètres OAuth 2.0 définis dans l'onglet « Sécurité ». Ce plugin n'ajoute aucun jeton."
+
+msgid "The webhook is authenticated with a token managed by this plugin (see the \"Bearer tokens\" tab). The \"Use OAuth\" option of the \"Security\" tab is then disabled."
+msgstr "Le webhook est authentifié avec un jeton géré par ce plugin (voir l'onglet « Jetons bearer »). L'option « Utiliser OAuth » de l'onglet « Sécurité » est alors désactivée."
+

@@ -1,0 +1,48 @@
+<root>
+      <name>Webhook Bearer API</name>
+      <key>webhookbearerapi</key>
+      <state>stable</state>
+      <description>
+         <short>
+            <en>Bearer token authentication for the webhooks calling APIs</en>
+            <fr>Authentification par jeton bearer pour les webhooks appelant des API</fr>
+         </short>
+         <long>
+            <en>Adds a "Bearer API" item to Setup > General: define a token provider for a webhook (OAuth2 client credentials or password grant, HTTP Basic or body client credentials, custom token and expiration fields, additional parameters), and the bearer token is automatically added to the request headers when the webhook is sent. A scheduled task renews the tokens of the APIs used by the webhooks before their expiration, and the token status and a manual refresh are available from a new tab of the webhook forms.</en>
+            <fr>Ajoute une entrée « API bearer » à Configuration > Générale : définissez un fournisseur de jetons pour un webhook (OAuth2 identifiants client ou mot de passe, identifiants client en en-tête HTTP Basic ou dans le corps, champs personnalisés du jeton et de l'expiration, paramètres supplémentaires), et le jeton bearer est ajouté automatiquement aux en-têtes de la requête lors de l'envoi du webhook. Une tâche planifiée renouvelle les jetons des API utilisées par les webhooks avant leur expiration, et l'état du jeton ainsi qu'un rafraîchissement manuel sont disponibles depuis un nouvel onglet des formulaires de webhook.</fr>
+         </long>
+      </description>
+      <homepage>https://github.com/loonaire/glpi-webhookbearerapi</homepage>
+      <download>https://github.com/loonaire/glpi-webhookbearerapi/releases</download>
+      <issues>https://github.com/loonaire/glpi-webhookbearerapi/issues</issues>
+      <readme>https://raw.githubusercontent.com/loonaire/glpi-webhookbearerapi/refs/heads/main/README.md</readme>
+      <authors>
+         <author>Loonaire</author>
+      </authors>
+      <versions>
+         <version>
+            <num>1.0</num>
+            <compatibility>~12.0.0</compatibility>
+         </version>
+      </versions>
+      <langs>
+         <lang>en_GB</lang>
+         <lang>en_US</lang>
+         <lang>fr_FR</lang>
+      </langs>
+      <license>GPL v2+</license>
+      <tags>
+         <en>
+            <tag>webhook</tag>
+            <tag>api</tag>
+            <tag>oauth2</tag>
+            <tag>bearer token</tag>
+         </en>
+         <fr>
+            <tag>webhook</tag>
+            <tag>api</tag>
+            <tag>oauth2</tag>
+            <tag>jeton bearer</tag>
+         </fr>
+      </tags>
+</root>
