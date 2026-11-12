@@ -1,0 +1,23 @@
+# Système d'exploitation
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Éditeurs et IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Dépendances locales (outillage)
+/vendor/
+/node_modules/
+composer.lock
+
+# Fichiers temporaires et journaux
+*.log
+*.bak
+*.tmp

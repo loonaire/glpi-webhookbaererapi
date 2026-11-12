@@ -1,0 +1,121 @@
+# Publishes a GitHub release when a version tag is pushed (e.g. `1.0`, `1.1.0-beta1` or `v1.0`).
+#
+# The release contains `glpi-webhookbearerapi-<version>.tar.gz`, an archive holding a single
+# `webhookbearerapi/` directory (the plugin technical name), as expected by GLPI, and its SHA-256 checksum.
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+*'
+      - 'v[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish the release
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # Explicit bash: enables `-o pipefail` (a failing `git archive` must fail the build).
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Compute the version
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          {
+            echo "tag=${TAG}"
+            echo "version=${VERSION}"
+            echo "archive=glpi-webhookbearerapi-${VERSION}.tar.gz"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check that the tag matches the plugin version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          SETUP_VERSION=$(sed -n "s/^define('PLUGIN_WEBHOOKBEARERAPI_VERSION', '\(.*\)');/\1/p" setup.php)
+          if [ "${SETUP_VERSION}" != "${VERSION}" ]; then
+            echo "::error file=setup.php::PLUGIN_WEBHOOKBEARERAPI_VERSION is '${SETUP_VERSION}', but the tag is '${VERSION}'."
+            exit 1
+          fi
+          if ! grep -q "<num>${VERSION}</num>" webhookbearerapi.xml; then
+            echo "::error file=webhookbearerapi.xml::Version ${VERSION} is missing from the <versions> of webhookbearerapi.xml."
+            exit 1
+          fi
+          if ! grep -q "/releases/download/${GITHUB_REF_NAME}/glpi-webhookbearerapi-${VERSION}.tar.gz" webhookbearerapi.xml; then
+            echo "::warning file=webhookbearerapi.xml::No <download_url> pointing to the archive of this release in webhookbearerapi.xml."
+          fi
+
+      - name: Check the PHP syntax
+        run: |
+          php --version
+          find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+
+      - name: Check the translations
+        run: |
+          command -v msgfmt >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq gettext)
+          for po in locales/*.po; do
+            msgfmt --check --output-file=/dev/null "${po}"
+          done
+
+      - name: Build the archive
+        env:
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+        run: |
+          # HEAD is the tagged commit. Files marked `export-ignore` in .gitattributes are left out.
+          git archive --format=tar --prefix=webhookbearerapi/ HEAD | gzip -9 > "${ARCHIVE}"
+          sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          tar -tzf "${ARCHIVE}"
+
+      - name: Prepare the release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+        run: |
+          # Section "## [<version>]" of CHANGELOG.md
+          awk -v version="${VERSION}" '
+            /^## / {
+              if (found) exit
+              if (index($0, "[" version "]") > 0) { found = 1; next }
+            }
+            # Link references ("[1.0.0]: https://...") are not part of the section text.
+            found && !/^\[[^]]+\]: / { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "Version ${VERSION}." > notes.md
+          fi
+          cat >> notes.md <<EOF
+
+          ## Installation
+
+          Extraire \`${ARCHIVE}\` dans le répertoire \`plugins/\` de GLPI (cela crée \`plugins/webhookbearerapi\`),
+          puis installer et activer le plugin dans *Configuration > Plugins*.
+          EOF
+          cat notes.md
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+        run: |
+          PRERELEASE=""
+          case "${VERSION}" in
+            *-*) PRERELEASE="--prerelease" ;; # e.g. 1.1.0-beta1
+          esac
+          gh release create "${TAG}" "${ARCHIVE}" "${ARCHIVE}.sha256" \
+            --title "${VERSION}" \
+            --notes-file notes.md \
+            --verify-tag \
+            ${PRERELEASE}

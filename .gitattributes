@@ -1,0 +1,38 @@
+# Normalise les fins de ligne en LF dans le dépôt
+* text=auto eol=lf
+
+# Fichiers texte
+*.php    text eol=lf
+*.inc    text eol=lf
+*.js     text eol=lf
+*.css    text eol=lf
+*.html   text eol=lf
+*.twig   text eol=lf
+*.xml    text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+*.pot    text eol=lf
+*.po     text eol=lf
+LICENSE  text eol=lf
+
+# Fichiers binaires
+*.mo     binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.svg    text
+*.woff   binary
+*.woff2  binary
+
+# Statistiques de langage GitHub : les traductions ne comptent pas comme du code
+locales/* linguist-documentation
+
+# Éléments exclus des archives (marketplace, releases)
+.gitattributes export-ignore
+.gitignore     export-ignore
+.github/       export-ignore
