@@ -35,6 +35,7 @@ use CronTask;
 use Glpi\Application\View\TemplateRenderer;
 use Html;
 use Log;
+use QueuedWebhook;
 use Session;
 use Toolbox;
 use Webhook;
@@ -56,9 +57,16 @@ class BearerApi extends CommonDBTM
     public const FORMAT_FORM = 'form';
     public const FORMAT_JSON = 'json';
 
-    // Source of the bearer token used to authenticate the webhooks.
-    public const SOURCE_NATIVE = 'native'; // GLPI core OAuth 2.0 parameters ("Security" tab).
-    public const SOURCE_PLUGIN = 'plugin'; // Providers of this plugin ("Bearer tokens" tab).
+    // Value of the "API authentication source" field of the webhook forms for the native
+    // authentication of GLPI (OAuth 2.0 parameters of the "Security" tab); the other values are
+    // the ids of the token providers.
+    public const SOURCE_NATIVE = 'native';
+
+    // Settings sent with the token request: changing one of them renews the cached token.
+    private const TOKEN_REQUEST_FIELDS = [
+        'token_url', 'grant_type', 'auth_method', 'body_format', 'client_id', 'client_secret',
+        'username', 'password', 'scope', 'extra_params',
+    ];
 
     /** @var array<int, string> */
     public static array $undisclosedFields = [
@@ -137,7 +145,6 @@ class BearerApi extends CommonDBTM
     public function post_getEmpty()
     {
         $this->fields['is_active']        = 1;
-        $this->fields['webhooks_id']      = isset($_GET['webhooks_id']) ? (int) $_GET['webhooks_id'] : null;
         $this->fields['grant_type']       = self::GRANT_CLIENT_CREDENTIALS;
         $this->fields['auth_method']      = self::AUTH_BODY;
         $this->fields['body_format']      = self::FORMAT_FORM;
@@ -161,14 +168,8 @@ class BearerApi extends CommonDBTM
             'datatype'           => 'bool',
         ];
 
-        $tab[] = [
-            'id'                 => '4',
-            'table'              => Webhook::getTable(),
-            'field'              => 'name',
-            'linkfield'          => 'webhooks_id',
-            'name'               => _n('Webhook', 'Webhooks', 1),
-            'datatype'           => 'dropdown',
-        ];
+        // Id 4 was the "Webhook" option of version 1.0 (the webhooks now choose their provider):
+        // do not reuse it.
 
         $tab[] = [
             'id'                 => '5',
@@ -253,8 +254,8 @@ class BearerApi extends CommonDBTM
 
         if ($field === 'grant_type') {
             $types = self::getGrantTypes();
-            $value = $values['grant_type'] ?? '';
-            return $types[$value] ?? $value;
+            $value = (string) ($values['grant_type'] ?? '');
+            return htmlescape($types[$value] ?? $value);
         }
 
         return parent::getSpecificValueToDisplay($field, $values, $options);
@@ -264,6 +265,8 @@ class BearerApi extends CommonDBTM
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
+        // Webhooks using this provider.
+        $this->addStandardTab(self::class, $ong, $options);
         $this->addStandardTab(Log::class, $ong, $options);
 
         return $ong;
@@ -332,24 +335,6 @@ class BearerApi extends CommonDBTM
             $input['body_format'] = self::FORMAT_FORM;
         }
 
-        if (isset($input['webhooks_id']) && (int) $input['webhooks_id'] <= 0) {
-            // "None": store NULL to allow several unattached providers (NULL is not unique).
-            $input['webhooks_id'] = null;
-        } elseif (isset($input['webhooks_id'])) {
-            $existing = self::getForWebhook((int) $input['webhooks_id']);
-            if ($existing !== null && (int) $existing->getID() !== (int) ($input['id'] ?? -1)) {
-                Session::addMessageAfterRedirect(
-                    htmlescape(sprintf(
-                        __('A token provider is already configured for this webhook (%1$s).', 'webhookbearerapi'),
-                        $existing->getName()
-                    )),
-                    false,
-                    ERROR
-                );
-                return false;
-            }
-        }
-
         if (isset($input['client_secret'])) {
             if ($input['client_secret'] === '' || $input['client_secret'] === '••••••') {
                 unset($input['client_secret']);
@@ -383,13 +368,129 @@ class BearerApi extends CommonDBTM
             }
         }
 
-        foreach (['default_expires_in', 'refresh_margin'] as $int_field) {
+        // Minimum values of the durations, in seconds (same limits as the form).
+        foreach (['default_expires_in' => 60, 'refresh_margin' => 0] as $int_field => $min) {
             if (isset($input[$int_field])) {
-                $input[$int_field] = max(0, (int) $input[$int_field]);
+                $input[$int_field] = max($min, (int) $input[$int_field]);
             }
         }
 
         return $input;
+    }
+
+    public function post_updateItem($history = true)
+    {
+        // Renaming the header: the queue entries must not keep the token under the previous name,
+        // and the entries still to be sent get it under the new name.
+        if (in_array('header_name', $this->updates, true)) {
+            $old_header_name = (string) ($this->oldvalues['header_name'] ?? '');
+            foreach (static::getWebhookIds((int) $this->getID()) as $webhooks_id) {
+                TokenManager::removeTokensFromQueue($this, $webhooks_id, $old_header_name);
+            }
+            TokenManager::syncQueuedWebhooks($this);
+        }
+
+        // The cached token was obtained with the previous settings (e.g. without the right scope):
+        // it would otherwise be used until its expiration.
+        if (array_intersect(self::TOKEN_REQUEST_FIELDS, $this->updates) !== []) {
+            $this->renewToken();
+        }
+
+        $this->warnAboutGlpiApi();
+    }
+
+    public function post_addItem()
+    {
+        $this->warnAboutGlpiApi();
+    }
+
+    /**
+     * Drop the cached token and request a new one with the current settings, then give it to the
+     * queued webhooks still to be sent.
+     *
+     * @return void
+     */
+    private function renewToken(): void
+    {
+        TokenManager::clearToken($this);
+
+        if ((int) $this->fields['is_active'] !== 1 || $this->isDeleted()) {
+            return;
+        }
+
+        if (TokenManager::refreshToken($this) !== null) {
+            TokenManager::syncQueuedWebhooks($this);
+            Session::addMessageAfterRedirect(
+                __s('The token settings have changed: a new token has been obtained.', 'webhookbearerapi')
+            );
+        } else {
+            Session::addMessageAfterRedirect(
+                htmlescape(sprintf(
+                    __('The token settings have changed, but no new token could be obtained: %s', 'webhookbearerapi'),
+                    $this->fields['last_error'] ?? ''
+                )),
+                false,
+                ERROR
+            );
+        }
+    }
+
+    /**
+     * Warn about the settings required by the API of GLPI, when the token URL is the token endpoint
+     * of a GLPI (`.../api.php/token`).
+     *
+     * @return void
+     */
+    private function warnAboutGlpiApi(): void
+    {
+        $path = (string) (parse_url((string) $this->fields['token_url'], PHP_URL_PATH) ?? '');
+        if (!preg_match('#/api\.php/token/?$#i', $path)) {
+            return;
+        }
+
+        if ((string) $this->fields['grant_type'] === self::GRANT_CLIENT_CREDENTIALS) {
+            Session::addMessageAfterRedirect(
+                __s('This token URL is the one of a GLPI: GLPI only links its tokens to a user with the "Password" grant type. With "Client credentials", its API answers "You are not authenticated".', 'webhookbearerapi'),
+                false,
+                WARNING
+            );
+        }
+
+        $scopes = preg_split('/\s+/', trim((string) $this->fields['scope'])) ?: [];
+        if (!in_array('api', $scopes, true)) {
+            Session::addMessageAfterRedirect(
+                __s('This token URL is the one of a GLPI: the "api" scope is required to use its API (otherwise it answers "You do not have the required scope(s)"). The OAuth client of the target GLPI must also allow this scope.', 'webhookbearerapi'),
+                false,
+                WARNING
+            );
+        }
+    }
+
+    public function cleanDBonPurge()
+    {
+        $webhook_names = [];
+
+        foreach (static::getWebhookIds((int) $this->getID()) as $webhooks_id) {
+            // Do not leave the token of a purged provider readable in the webhook queue.
+            TokenManager::removeTokensFromQueue($this, $webhooks_id);
+            static::setWebhookProvider($webhooks_id, 0);
+
+            $webhook = new Webhook();
+            if ($webhook->getFromDB($webhooks_id)) {
+                $webhook_names[] = $webhook->getName();
+            }
+        }
+
+        if ($webhook_names !== []) {
+            Session::addMessageAfterRedirect(
+                htmlescape(sprintf(
+                    __('These webhooks no longer use a token provider and are back to the native authentication of GLPI: %s', 'webhookbearerapi'),
+                    implode(', ', $webhook_names)
+                )),
+                false,
+                WARNING
+            );
+        }
     }
 
     /**
@@ -404,6 +505,17 @@ class BearerApi extends CommonDBTM
     {
         $this->initForm($ID, $options);
 
+        if (!$this->isNewItem()) {
+            // Rendered after the "Save" button, which therefore remains the default button of the
+            // form (pressing Enter in a field saves the changes).
+            $options['addbuttons'] = [
+                'refresh' => [
+                    'text' => __('Refresh token now', 'webhookbearerapi'),
+                    'icon' => 'ti ti-refresh',
+                ],
+            ];
+        }
+
         TemplateRenderer::getInstance()->display('@webhookbearerapi/bearerapi.form.html.twig', [
             'item'         => $this,
             'params'       => $options,
@@ -416,42 +528,55 @@ class BearerApi extends CommonDBTM
     }
 
     /**
-     * Tab title on the webhook forms.
+     * Tab titles: token provider used by a webhook (webhook forms), webhooks using a provider
+     * (provider forms).
      *
      * @used-by CommonDBTM::addStandardTab()
      */
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
-        if ($withtemplate || !$item instanceof Webhook || !static::canView()) {
+        if ($withtemplate || !static::canView()) {
             return '';
         }
 
-        $nb = countElementsInTable(
-            static::getTable(),
-            ['webhooks_id' => $item->getID()]
-        );
+        if ($item instanceof Webhook) {
+            $nb = static::getWebhookProviderId((int) $item->getID()) > 0 ? 1 : 0;
+            return static::createTabEntry(static::getTypeName(1), $nb);
+        }
 
-        return static::createTabEntry(static::getTypeName(Session::getPluralNumber()), $nb);
+        if ($item instanceof self && !$item->isNewItem()) {
+            return static::createTabEntry(
+                Webhook::getTypeName(Session::getPluralNumber()),
+                count(static::getWebhookIds((int) $item->getID())),
+                Webhook::class
+            );
+        }
+
+        return '';
     }
 
     /**
-     * Tab content on the webhook forms: list the token providers attached to the webhook.
+     * Tab contents.
      *
      * @used-by CommonDBTM::displayStandardTab()
      */
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-        if (!$item instanceof Webhook) {
-            return false;
+        if ($item instanceof Webhook) {
+            static::showForWebhook($item);
+            return true;
         }
 
-        static::showForWebhook($item);
+        if ($item instanceof self) {
+            static::showWebhooks($item);
+            return true;
+        }
 
-        return true;
+        return false;
     }
 
     /**
-     * Display the token providers attached to the given webhook.
+     * Display the token provider used by the given webhook.
      *
      * @param Webhook $webhook
      *
@@ -459,89 +584,79 @@ class BearerApi extends CommonDBTM
      */
     public static function showForWebhook(Webhook $webhook)
     {
-        $target   = static::getFormURL();
-        $provider = self::getForWebhook((int) $webhook->getID());
+        $provider = self::getForWebhook((int) $webhook->getID(), false);
 
-        echo "<div class='mb-2'>";
-        echo "<a href='{$target}?id=-1&webhooks_id={$webhook->getID()}' class='btn btn-primary'>";
-        echo "<i class='ti ti-plus' aria-hidden='true'></i><span>" . __('Add') . "</span></a>";
-        echo "</div>";
-
-        if ($provider === null) {
-            echo "<div class='text-muted'>" . __('No token provider for this webhook.', 'webhookbearerapi') . "</div>";
-            return;
+        $token_state = 'none';
+        if ($provider !== null && !empty($provider->fields['access_token']) && !empty($provider->fields['token_expires_at'])) {
+            $token_state = TokenManager::isExpired($provider) ? 'expired' : 'valid';
         }
 
-        $expiration = $provider->fields['token_expires_at'];
-        if (empty($expiration)) {
-            $state    = 'text-danger';
-            $statetxt = __('No token', 'webhookbearerapi');
-        } else {
-            $valid    = strtotime($expiration) > (time() + (int) $provider->fields['refresh_margin']);
-            $state    = $valid ? 'text-success' : 'text-warning';
-            $statetxt = sprintf(
-                __('%1$s: %2$s'),
-                $valid ? __('Valid', 'webhookbearerapi') : __('Expired', 'webhookbearerapi'),
-                htmlescape(date('Y-m-d H:i:s', strtotime($expiration)))
-            );
-        }
-
-        echo "<table class='table table-striped align-middle'><tbody>";
-        echo "<tr><th>" . __('Name') . "</th><td><a href='{$target}?id={$provider->getID()}'>"
-            . htmlescape($provider->getName()) . "</a></td></tr>";
-        echo "<tr><th>" . __('Active') . "</th><td>" . ($provider->fields['is_active'] ? __('Yes') : __('No')) . "</td></tr>";
-        echo "<tr><th>" . __('Bearer token', 'webhookbearerapi') . "</th><td class='{$state}'>{$statetxt}</td></tr>";
-        if (!empty($provider->fields['last_refresh'])) {
-            echo "<tr><th>" . __('Last token refresh', 'webhookbearerapi') . "</th><td>"
-                . htmlescape($provider->fields['last_refresh']) . "</td></tr>";
-        }
-        if (!empty($provider->fields['last_error'])) {
-            echo "<tr><th>" . __('Last error', 'webhookbearerapi') . "</th><td class='text-danger'>"
-                . htmlescape($provider->fields['last_error']) . "</td></tr>";
-        }
-        echo "</tbody></table>";
+        TemplateRenderer::getInstance()->display('@webhookbearerapi/webhook_tab.html.twig', [
+            'provider'    => $provider,
+            'webhook'     => $webhook,
+            'token_state' => $token_state,
+            'can_create'  => static::canCreate(),
+            'add_url'     => static::getFormURL(),
+            'last_request' => TokenManager::getLastQueuedRequest($webhook, $provider),
+            'queue_url'    => QueuedWebhook::getFormURL(),
+            // GLPI sends the challenge-response check without the token of the plugin.
+            'cra_enabled' => GLPI_WEBHOOK_CRA_MANDATORY || (bool) ($webhook->fields['use_cra_challenge'] ?? false),
+        ]);
     }
 
     /**
-     * Load the token provider attached to the given webhook, if any.
+     * Display the webhooks using the given token provider.
      *
-     * @param int $webhooks_id
+     * @param BearerApi $provider
+     *
+     * @return void
+     */
+    public static function showWebhooks(BearerApi $provider): void
+    {
+        $webhooks = [];
+        foreach (static::getWebhookIds((int) $provider->getID()) as $webhooks_id) {
+            $webhook = new Webhook();
+            if ($webhook->getFromDB($webhooks_id)) {
+                $webhooks[] = $webhook;
+            }
+        }
+
+        TemplateRenderer::getInstance()->display('@webhookbearerapi/bearerapi_webhooks.html.twig', [
+            'provider' => $provider,
+            'webhooks' => $webhooks,
+        ]);
+    }
+
+    /**
+     * Load the token provider used by the given webhook, if any.
+     *
+     * @param int  $webhooks_id
+     * @param bool $usable_only Only return an active provider that is not in the trash
      *
      * @return BearerApi|null
      */
-    public static function getForWebhook(int $webhooks_id): ?BearerApi
+    public static function getForWebhook(int $webhooks_id, bool $usable_only = true): ?BearerApi
     {
-        global $DB;
-
-        if ($webhooks_id <= 0) {
-            return null;
-        }
-
-        $row = $DB->request([
-            'SELECT' => 'id',
-            'FROM'   => static::getTable(),
-            'WHERE'  => [
-                'webhooks_id' => $webhooks_id,
-                'is_deleted'  => 0,
-            ],
-            'ORDER'  => 'id ASC',
-            'LIMIT'  => 1,
-        ])->current();
-
-        if ($row === null) {
+        $provider_id = static::getWebhookProviderId($webhooks_id);
+        if ($provider_id <= 0) {
             return null;
         }
 
         $provider = new self();
-        if ($provider->getFromDB((int) $row['id'])) {
-            return $provider;
+        if (!$provider->getFromDB($provider_id)) {
+            return null;
         }
 
-        return null;
+        if ($usable_only && ($provider->isDeleted() || (int) $provider->fields['is_active'] !== 1)) {
+            return null;
+        }
+
+        return $provider;
     }
 
     /**
-     * Table storing the authentication source choice of each webhook.
+     * Table storing the token provider used by each webhook (a webhook without row uses the
+     * native authentication of GLPI).
      *
      * @return string
      */
@@ -551,98 +666,140 @@ class BearerApi extends CommonDBTM
     }
 
     /**
-     * Load the explicitly configured authentication source of a webhook.
+     * Id of the token provider used by a webhook.
      *
      * @param int $webhooks_id
      *
-     * @return string|null One of the SOURCE_* constants, or null when not explicitly set.
+     * @return int The provider id, 0 when the webhook uses the native authentication of GLPI
      */
-    public static function getAuthSource(int $webhooks_id): ?string
+    public static function getWebhookProviderId(int $webhooks_id): int
     {
         global $DB;
 
         if ($webhooks_id <= 0 || !$DB->tableExists(static::getConfigTable())) {
-            return null;
+            return 0;
         }
 
+        $fk  = static::getForeignKeyField();
         $row = $DB->request([
-            'SELECT' => 'auth_source',
+            'SELECT' => $fk,
             'FROM'   => static::getConfigTable(),
             'WHERE'  => ['webhooks_id' => $webhooks_id],
         ])->current();
 
-        return $row === null ? null : (string) $row['auth_source'];
+        return $row === null ? 0 : (int) $row[$fk];
     }
 
     /**
-     * Compute the effective authentication source of a webhook: the explicitly configured
-     * choice when there is one, otherwise the legacy automatic behavior (this plugin when
-     * a provider is attached to the webhook, GLPI core otherwise).
+     * Store the token provider used by a webhook.
      *
      * @param int $webhooks_id
-     *
-     * @return string One of the SOURCE_* constants.
-     */
-    public static function getEffectiveAuthSource(int $webhooks_id): string
-    {
-        $source = static::getAuthSource($webhooks_id);
-        if ($source !== null) {
-            return $source;
-        }
-
-        return static::getForWebhook($webhooks_id) !== null
-            ? self::SOURCE_PLUGIN
-            : self::SOURCE_NATIVE;
-    }
-
-    /**
-     * Store the authentication source choice of a webhook.
-     *
-     * @param int    $webhooks_id
-     * @param string $source One of the SOURCE_* constants.
+     * @param int $bearerapis_id The provider id, 0 for the native authentication of GLPI
      *
      * @return void
      */
-    public static function setAuthSource(int $webhooks_id, string $source): void
+    public static function setWebhookProvider(int $webhooks_id, int $bearerapis_id): void
     {
         global $DB;
 
-        if ($webhooks_id <= 0 || !in_array($source, [self::SOURCE_NATIVE, self::SOURCE_PLUGIN], true)) {
+        if ($webhooks_id <= 0) {
             return;
         }
 
-        $existing = static::getAuthSource($webhooks_id);
-
-        if ($existing === null) {
-            $DB->insert(static::getConfigTable(), [
-                'webhooks_id' => $webhooks_id,
-                'auth_source' => $source,
-            ]);
-        } else if ($existing !== $source) {
-            $DB->update(static::getConfigTable(), [
-                'auth_source' => $source,
-            ], [
-                'webhooks_id' => $webhooks_id,
-            ]);
+        if ($bearerapis_id > 0) {
+            $DB->updateOrInsert(
+                static::getConfigTable(),
+                [static::getForeignKeyField() => $bearerapis_id],
+                ['webhooks_id' => $webhooks_id]
+            );
+        } else {
+            $DB->delete(static::getConfigTable(), ['webhooks_id' => $webhooks_id]);
         }
     }
 
     /**
-     * Remove the authentication source choice of a webhook.
+     * Ids of the webhooks using a token provider.
      *
-     * @param int $webhooks_id
+     * @param int $bearerapis_id
      *
-     * @return void
+     * @return int[]
      */
-    public static function deleteAuthSource(int $webhooks_id): void
+    public static function getWebhookIds(int $bearerapis_id): array
     {
         global $DB;
 
-        if ($webhooks_id <= 0 || !$DB->tableExists(static::getConfigTable())) {
-            return;
+        if ($bearerapis_id <= 0) {
+            return [];
         }
 
-        $DB->delete(static::getConfigTable(), ['webhooks_id' => $webhooks_id]);
+        $ids      = [];
+        $iterator = $DB->request([
+            'SELECT' => 'webhooks_id',
+            'FROM'   => static::getConfigTable(),
+            'WHERE'  => [static::getForeignKeyField() => $bearerapis_id],
+            'ORDER'  => 'webhooks_id ASC',
+        ]);
+        foreach ($iterator as $row) {
+            $ids[] = (int) $row['webhooks_id'];
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Label of the token providers group in the "API authentication source" field.
+     *
+     * @return string
+     */
+    public static function getProvidersGroupLabel(): string
+    {
+        return __('Token providers (Bearer API plugin)', 'webhookbearerapi');
+    }
+
+    /**
+     * Choices of the "API authentication source" field of the webhook forms: the native
+     * authentication of GLPI, then the token providers (outside the trash, plus the provider
+     * currently used by the webhook so that the field shows the actual value).
+     *
+     * @param int $current_id Id of the provider currently used by the webhook
+     *
+     * @return array<string, string|array<int, string>>
+     */
+    public static function getAuthChoices(int $current_id = 0): array
+    {
+        global $DB;
+
+        $providers = [];
+        $iterator  = $DB->request([
+            'SELECT' => ['id', 'name', 'is_active', 'is_deleted'],
+            'FROM'   => static::getTable(),
+            'WHERE'  => [
+                'OR' => [
+                    'is_deleted' => 0,
+                    'id'         => $current_id,
+                ],
+            ],
+            'ORDER'  => ['name ASC', 'id ASC'],
+        ]);
+        foreach ($iterator as $row) {
+            $name = trim((string) $row['name']);
+            if ($name === '') {
+                $name = sprintf('%s (%d)', static::getTypeName(1), $row['id']);
+            }
+            if ($row['is_deleted']) {
+                $name = sprintf('%s (%s)', $name, __('Deleted'));
+            } elseif (!$row['is_active']) {
+                $name = sprintf('%s (%s)', $name, __('Inactive'));
+            }
+            $providers[(int) $row['id']] = $name;
+        }
+
+        $choices = [self::SOURCE_NATIVE => __('Native GLPI (OAuth 2.0)', 'webhookbearerapi')];
+        if ($providers !== []) {
+            $choices[static::getProvidersGroupLabel()] = $providers;
+        }
+
+        return $choices;
     }
 
     /**
@@ -658,20 +815,35 @@ class BearerApi extends CommonDBTM
     {
         $task->setVolume(0);
 
-        $result = TokenManager::refreshDueTokens();
+        // Also renew the tokens that would expire before the next run of the task, so that the
+        // queued webhooks always carry a token that is still valid when they are sent.
+        $result = TokenManager::refreshDueTokens((int) ($task->fields['frequency'] ?? 0));
+        $queue  = TokenManager::syncAllQueuedWebhooks();
 
-        if ($result['total'] === 0) {
+        $volume = $result['total'] + $queue['updated'] + $queue['cleaned'];
+        if ($volume === 0) {
             return 0;
         }
 
-        $task->setVolume($result['total']);
-        $task->log(
-            sprintf(
-                __('%1$d/%2$d bearer tokens refreshed', 'webhookbearerapi'),
-                $result['ok'],
-                $result['total']
-            )
-        );
+        $task->setVolume($volume);
+        if ($queue['updated'] > 0 || $queue['cleaned'] > 0) {
+            $task->log(
+                sprintf(
+                    __('Webhook queue: %1$d entries to send updated (target URL, token), token removed from %2$d sent entries', 'webhookbearerapi'),
+                    $queue['updated'],
+                    $queue['cleaned']
+                )
+            );
+        }
+        if ($result['total'] > 0) {
+            $task->log(
+                sprintf(
+                    __('%1$d/%2$d bearer tokens refreshed', 'webhookbearerapi'),
+                    $result['ok'],
+                    $result['total']
+                )
+            );
+        }
         if ($result['ko'] > 0) {
             $task->log(
                 sprintf(

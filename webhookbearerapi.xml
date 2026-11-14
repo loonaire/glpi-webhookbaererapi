@@ -8,8 +8,8 @@
             <fr>Authentification par jeton bearer pour les webhooks appelant des API</fr>
          </short>
          <long>
-            <en>Adds a "Bearer API" item to Setup > General: define a token provider for a webhook (OAuth2 client credentials or password grant, HTTP Basic or body client credentials, custom token and expiration fields, additional parameters), and the bearer token is automatically added to the request headers when the webhook is sent. A scheduled task renews the tokens of the APIs used by the webhooks before their expiration, and the token status and a manual refresh are available from a new tab of the webhook forms.</en>
-            <fr>Ajoute une entrée « API bearer » à Configuration > Générale : définissez un fournisseur de jetons pour un webhook (OAuth2 identifiants client ou mot de passe, identifiants client en en-tête HTTP Basic ou dans le corps, champs personnalisés du jeton et de l'expiration, paramètres supplémentaires), et le jeton bearer est ajouté automatiquement aux en-têtes de la requête lors de l'envoi du webhook. Une tâche planifiée renouvelle les jetons des API utilisées par les webhooks avant leur expiration, et l'état du jeton ainsi qu'un rafraîchissement manuel sont disponibles depuis un nouvel onglet des formulaires de webhook.</fr>
+            <en>Adds a "Bearer API" item to Setup > General: define token providers (OAuth2 client credentials or password grant, HTTP Basic or body client credentials, scope, custom token and expiration fields, additional parameters), select the provider of each webhook on its form, and the bearer token is automatically added to the request headers when the webhook is sent. A provider can be shared by several webhooks. A scheduled task renews the tokens before their expiration, and the token status is available from a new tab of the webhook forms.</en>
+            <fr>Ajoute une entrée « API bearer » à Configuration > Générale : définissez des fournisseurs de jetons (OAuth2 identifiants client ou mot de passe, identifiants client en en-tête HTTP Basic ou dans le corps, portée, champs personnalisés du jeton et de l'expiration, paramètres supplémentaires), choisissez le fournisseur de chaque webhook dans son formulaire, et le jeton bearer est ajouté automatiquement aux en-têtes de la requête lors de l'envoi du webhook. Un fournisseur peut servir plusieurs webhooks. Une tâche planifiée renouvelle les jetons avant leur expiration, et l'état du jeton est disponible depuis un nouvel onglet des formulaires de webhook.</fr>
          </long>
       </description>
       <homepage>https://github.com/loonaire/glpi-webhookbearerapi</homepage>
@@ -20,6 +20,10 @@
          <author>Loonaire</author>
       </authors>
       <versions>
+         <version>
+            <num>1.1</num>
+            <compatibility>~12.0.0</compatibility>
+         </version>
          <version>
             <num>1.0</num>
             <compatibility>~12.0.0</compatibility>

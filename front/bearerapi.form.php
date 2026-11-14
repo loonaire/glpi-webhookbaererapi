@@ -30,7 +30,8 @@
 use GlpiPlugin\Webhookbearerapi\BearerApi;
 use GlpiPlugin\Webhookbearerapi\TokenManager;
 
-include(__DIR__ . '/../../../inc/includes.php');
+// Since GLPI 11, the legacy front files are loaded by GLPI itself, with the session and the
+// configuration already initialized: `inc/includes.php` must no longer be included.
 
 Session::checkRight('config', READ);
 
@@ -41,7 +42,9 @@ if (isset($_POST['refresh'])) {
     $id = (int) ($_POST['id'] ?? -1);
     if ($api->canEdit($id) && $api->getFromDB($id)) {
         if (TokenManager::refreshToken($api) !== null) {
-            Session::addMessageAfterRedirect(__('The bearer token has been refreshed.', 'webhookbearerapi'));
+            // Give the new token to the queued webhooks still to be sent.
+            TokenManager::syncQueuedWebhooks($api);
+            Session::addMessageAfterRedirect(__s('The bearer token has been refreshed.', 'webhookbearerapi'));
         } else {
             Session::addMessageAfterRedirect(
                 htmlescape(sprintf(
@@ -53,37 +56,37 @@ if (isset($_POST['refresh'])) {
             );
         }
     }
-    Html::redirect(BearerApi::getFormURL() . '?id=' . $id);
+    Html::redirect(BearerApi::getFormURLWithID($id));
 }
 
 if (isset($_POST['add'])) {
     $api->check(-1, CREATE, $_POST);
 
     if ($newID = $api->add($_POST)) {
-        Html::redirect(BearerApi::getFormURL() . '?id=' . $newID);
+        Html::redirect(BearerApi::getFormURLWithID($newID));
     }
-} else if (isset($_POST['update'])) {
+    Html::back();
+} elseif (isset($_POST['update'])) {
     $api->check($_POST['id'], UPDATE);
-
     $api->update($_POST);
     Html::back();
-} else if (isset($_POST['delete'])) {
+} elseif (isset($_POST['delete'])) {
     $api->check($_POST['id'], DELETE);
     $api->delete($_POST);
-    Html::back();
-} else if (isset($_POST['restore'])) {
+    $api->redirectToList();
+} elseif (isset($_POST['restore'])) {
     $api->check($_POST['id'], DELETE);
     $api->restore($_POST);
     Html::back();
-} else if (isset($_POST['purge'])) {
+} elseif (isset($_POST['purge'])) {
     $api->check($_POST['id'], PURGE);
     $api->delete(['id' => (int) $_POST['id']], true);
-    Html::back();
+    $api->redirectToList();
 }
 
 Html::header(
     BearerApi::getTypeName(Session::getPluralNumber()),
-    $_SERVER['PHP_SELF'],
+    '',
     'config',
     BearerApi::class
 );

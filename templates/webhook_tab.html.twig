@@ -1,0 +1,167 @@
+{#
+ # -------------------------------------------------------------------------
+ # Webhook Bearer API plugin for GLPI
+ # -------------------------------------------------------------------------
+ #
+ # @license GPLv2+ https://www.gnu.org/licenses/gpl-2.0.html
+ # @link    https://github.com/loonaire/glpi-webhookbearerapi
+ # -------------------------------------------------------------------------
+ #}
+
+{#
+ # "Bearer API" tab of the webhook forms: token provider used by the webhook.
+ #}
+
+{% if provider is null %}
+    <div class="text-muted mb-2">
+        {{ __('This webhook does not use a token provider: choose one in the "API authentication source" field of the webhook form.', 'webhookbearerapi') }}
+    </div>
+    {% if can_create %}
+        <a href="{{ add_url }}" class="btn btn-outline-secondary">
+            <i class="ti ti-plus" aria-hidden="true"></i>
+            <span>{{ __('Create a token provider', 'webhookbearerapi') }}</span>
+        </a>
+    {% endif %}
+{% else %}
+    {% if provider.isDeleted() or not provider.fields['is_active'] %}
+        <div class="alert alert-warning" role="alert">
+            <i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>
+            {{ __('This token provider is inactive or in the trash: no token is added to the requests of the webhook.', 'webhookbearerapi') }}
+        </div>
+    {% endif %}
+    {% if cra_enabled %}
+        <div class="alert alert-warning" role="alert">
+            <i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>
+            {{ __('The challenge-response authentication is enabled for this webhook ("Security" tab or GLPI_WEBHOOK_CRA_MANDATORY constant): GLPI sends its verification request without the bearer token, so a protected API (such as the API of another GLPI) refuses it and the webhook is never sent.', 'webhookbearerapi') }}
+        </div>
+    {% endif %}
+
+    <p class="text-muted">
+        {{ __('The token is requested from the token URL of the provider, then added to the requests sent to the target URL of the webhook. The requests actually sent (URL, status code) are listed in the "Queries log" tab.', 'webhookbearerapi') }}
+    </p>
+
+    <table class="table table-striped align-middle">
+        <tbody>
+            <tr>
+                <th>{{ __('Target URL', 'webhookbearerapi') }}</th>
+                <td class="text-break">{{ webhook.fields['url'] }}</td>
+            </tr>
+            <tr>
+                <th>{{ __('Token URL', 'webhookbearerapi') }}</th>
+                <td class="text-break">{{ provider.fields['token_url'] }}</td>
+            </tr>
+            <tr>
+                <th>{{ __('Name') }}</th>
+                <td>
+                    <a href="{{ provider.getLinkURL() }}">{{ provider.getName() }}</a>
+                    {% if provider.isDeleted() %}
+                        <span class="badge bg-warning text-dark ms-1">{{ __('Deleted') }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>{{ __('Active') }}</th>
+                <td>{{ provider.fields['is_active'] ? __('Yes') : __('No') }}</td>
+            </tr>
+            <tr>
+                <th>{{ __('Bearer token', 'webhookbearerapi') }}</th>
+                {% if token_state == 'valid' %}
+                    <td class="text-success">
+                        {{ __('Valid until %s', 'webhookbearerapi')|format(provider.fields['token_expires_at']|formatted_datetime(true)) }}
+                    </td>
+                {% elseif token_state == 'expired' %}
+                    <td class="text-warning">
+                        {{ __('Expired since %s', 'webhookbearerapi')|format(provider.fields['token_expires_at']|formatted_datetime(true)) }}
+                    </td>
+                {% else %}
+                    <td class="text-danger">{{ __('No token yet', 'webhookbearerapi') }}</td>
+                {% endif %}
+            </tr>
+            {% if provider.fields['last_refresh'] is not empty %}
+                <tr>
+                    <th>{{ __('Last token refresh', 'webhookbearerapi') }}</th>
+                    <td>{{ provider.fields['last_refresh']|formatted_datetime(true) }}</td>
+                </tr>
+            {% endif %}
+            {% if provider.fields['last_error'] is not empty %}
+                <tr>
+                    <th>{{ __('Last error', 'webhookbearerapi') }}</th>
+                    <td class="text-danger">{{ provider.fields['last_error'] }}</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    {# Diagnostic of the last queue entry: what GLPI sends (or sent) to the target. #}
+    <h3 class="mt-4">{{ __('Last queued request', 'webhookbearerapi') }}</h3>
+    {% if last_request is null %}
+        <div class="text-muted">{{ __('No request has been queued for this webhook yet.', 'webhookbearerapi') }}</div>
+    {% else %}
+        {% set code = last_request.status_code %}
+        <table class="table table-striped align-middle">
+            <tbody>
+                <tr>
+                    <th>{{ __('Creation date') }}</th>
+                    <td>
+                        <a href="{{ queue_url ~ '?id=' ~ last_request.id }}">{{ last_request.date|formatted_datetime(true) }}</a>
+                    </td>
+                </tr>
+                <tr>
+                    <th>{{ __('URL') }}</th>
+                    <td class="text-break">{{ last_request.url }}</td>
+                </tr>
+                <tr>
+                    <th>{{ __('Status code', 'webhookbearerapi') }}</th>
+                    {% if code is null %}
+                        <td class="text-muted">{{ __('Not sent yet', 'webhookbearerapi') }}</td>
+                    {% else %}
+                        <td class="{{ code < 300 ? 'text-success' : 'text-danger' }}">
+                            {{ code }} ({{ _n('%d try', '%d tries', last_request.sent_try, 'webhookbearerapi')|format(last_request.sent_try) }})
+                        </td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <th>{{ __('Bearer token', 'webhookbearerapi') }}</th>
+                    {% if last_request.token == 'present' %}
+                        <td class="text-success">{{ __('Present in the headers', 'webhookbearerapi') }}</td>
+                    {% elseif last_request.token == 'removed' %}
+                        <td class="text-muted">{{ __('Removed after sending', 'webhookbearerapi') }}</td>
+                    {% else %}
+                        <td class="text-danger">{{ __('Missing from the headers', 'webhookbearerapi') }}</td>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <th>Content-Type</th>
+                    <td>{{ last_request.content_type is not empty ? last_request.content_type : '-' }}</td>
+                </tr>
+                <tr>
+                    <th>{{ _n('Payload', 'Payloads', 1) }}</th>
+                    {% if last_request.payload == 'json' %}
+                        <td class="text-success">{{ __('Valid JSON', 'webhookbearerapi') }}</td>
+                    {% elseif last_request.payload == 'invalid_json' %}
+                        <td class="text-danger">{{ __('Invalid JSON: %s', 'webhookbearerapi')|format(last_request.json_error) }}</td>
+                    {% elseif last_request.payload == 'empty' %}
+                        <td class="text-danger">{{ __('Empty (the payload template could not be rendered)', 'webhookbearerapi') }}</td>
+                    {% else %}
+                        <td>{{ __('Not JSON', 'webhookbearerapi') }}</td>
+                    {% endif %}
+                </tr>
+            </tbody>
+        </table>
+
+        {# Hints for the errors returned by the API of a GLPI and the usual causes. #}
+        {% if last_request.payload in ['invalid_json', 'empty'] %}
+            <div class="alert alert-info" role="alert">
+                {{ __('Fix the payload template ("Payload" tab): it must produce valid JSON. Write the text values with the json_encode filter, e.g. {{ item.name|json_encode|raw }} without quotes around it.', 'webhookbearerapi') }}
+            </div>
+        {% elseif code == 401 %}
+            <div class="alert alert-info" role="alert">
+                {{ __('401: the target did not accept the token. With the API of a GLPI: use the "Password" grant type in the token provider (a "Client credentials" token is linked to no user), and check that the token is present in the headers.', 'webhookbearerapi') }}
+            </div>
+        {% elseif code == 403 %}
+            <div class="alert alert-info" role="alert">
+                {{ __('403: the token is valid but not allowed. With the API of a GLPI: add the "api" scope to the token provider and to the OAuth client of the target GLPI, and check the rights of the user on the target.', 'webhookbearerapi') }}
+            </div>
+        {% endif %}
+    {% endif %}
+{% endif %}

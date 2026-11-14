@@ -1,0 +1,43 @@
+{#
+ # -------------------------------------------------------------------------
+ # Webhook Bearer API plugin for GLPI
+ # -------------------------------------------------------------------------
+ #
+ # @license GPLv2+ https://www.gnu.org/licenses/gpl-2.0.html
+ # @link    https://github.com/loonaire/glpi-webhookbearerapi
+ # -------------------------------------------------------------------------
+ #}
+
+{#
+ # "Webhooks" tab of the token provider forms: webhooks using the provider.
+ #}
+
+{% if webhooks is empty %}
+    <div class="text-muted">
+        {{ __('No webhook uses this token provider. To use it, select it in the "API authentication source" field of a webhook form.', 'webhookbearerapi') }}
+    </div>
+{% else %}
+    {% if provider.isDeleted() or not provider.fields['is_active'] %}
+        <div class="alert alert-warning" role="alert">
+            <i class="ti ti-alert-triangle me-1" aria-hidden="true"></i>
+            {{ __('This token provider is inactive or in the trash: no token is added to the requests of these webhooks.', 'webhookbearerapi') }}
+        </div>
+    {% endif %}
+
+    <table class="table table-striped table-hover align-middle">
+        <thead>
+            <tr>
+                <th>{{ __('Name') }}</th>
+                <th>{{ __('Active') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for webhook in webhooks %}
+                <tr>
+                    <td><a href="{{ webhook.getLinkURL() }}">{{ webhook.getName() }}</a></td>
+                    <td>{{ webhook.fields['is_active'] ? __('Yes') : __('No') }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

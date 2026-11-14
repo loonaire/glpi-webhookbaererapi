@@ -32,7 +32,7 @@ use Glpi\Config\ProxyExclusions;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Webhookbearerapi\BearerApi;
 
-define('PLUGIN_WEBHOOKBEARERAPI_VERSION', '1.0');
+define('PLUGIN_WEBHOOKBEARERAPI_VERSION', '1.1');
 
 // Minimal GLPI version, inclusive
 define('PLUGIN_WEBHOOKBEARERAPI_MIN_GLPI', '12.0.0');
@@ -48,7 +48,7 @@ function plugin_init_webhookbearerapi()
 {
     global $PLUGIN_HOOKS, $CFG_GLPI;
 
-    // "Bearer tokens" tab on the webhook forms.
+    // "Bearer API" tab on the webhook forms (token provider used by the webhook).
     Plugin::registerClass(BearerApi::class, ['addtabon' => Webhook::class]);
 
     // Entry of the "Setup" menu, close to the native webhooks.
@@ -82,17 +82,19 @@ function plugin_init_webhookbearerapi()
         Webhook::class       => 'plugin_webhookbearerapi_webhook_prepare',
     ];
 
-    // Record the authentication source choice displayed on the webhook forms (see the
-    // post_item_form hook below).
+    // Keep the native OAuth 2.0 option of the webhooks consistent with their authentication
+    // source, then record the source chosen on the webhook form once the webhook is saved.
     $PLUGIN_HOOKS[Hooks::PRE_ITEM_UPDATE]['webhookbearerapi'] = [
         Webhook::class => 'plugin_webhookbearerapi_webhook_prepare',
     ];
-
     $PLUGIN_HOOKS[Hooks::ITEM_ADD]['webhookbearerapi'] = [
-        Webhook::class => 'plugin_webhookbearerapi_webhook_post_add',
+        Webhook::class => 'plugin_webhookbearerapi_webhook_save_auth_source',
+    ];
+    $PLUGIN_HOOKS[Hooks::ITEM_UPDATE]['webhookbearerapi'] = [
+        Webhook::class => 'plugin_webhookbearerapi_webhook_save_auth_source',
     ];
 
-    // The radio fields have no helper in GLPI 12 templates: render them with plain HTML.
+    // "API authentication source" field of the main webhook form.
     $PLUGIN_HOOKS[Hooks::POST_ITEM_FORM]['webhookbearerapi'] = 'plugin_webhookbearerapi_post_item_form';
 
     // Remove the token providers of a webhook when it is purged.

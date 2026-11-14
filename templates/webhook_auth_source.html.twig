@@ -1,0 +1,44 @@
+{#
+ # -------------------------------------------------------------------------
+ # Webhook Bearer API plugin for GLPI
+ # -------------------------------------------------------------------------
+ #
+ # @license GPLv2+ https://www.gnu.org/licenses/gpl-2.0.html
+ # @link    https://github.com/loonaire/glpi-webhookbearerapi
+ # -------------------------------------------------------------------------
+ #}
+
+{#
+ # "API authentication source" field of the main webhook form, displayed by the
+ # `post_item_form` plugin hook.
+ #}
+
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% set rand = random() %}
+{% set row_id = 'plugin_webhookbearerapi_auth_source_row_' ~ rand %}
+
+{# Choices: the native authentication of GLPI, then the token providers of the plugin. #}
+{{ fields.dropdownArrayField(
+    'plugin_webhookbearerapi_auth',
+    value,
+    choices,
+    __('API authentication source', 'webhookbearerapi'),
+    {
+        'rand': rand,
+        'helper': helper,
+        'add_field_attribs': {'id': row_id}
+    }
+) }}
+
+{# The hook output comes after the fields block of the form: move the field with the other
+   fields, below "Log in item history". The script runs once, when the form is inserted. #}
+<script>
+    (() => {
+        const row = document.getElementById('{{ row_id|e('js') }}');
+        const target = row?.closest('form')?.querySelector('[data-testid="form-field-log_in_item_history"]');
+        if (target) {
+            target.after(row);
+        }
+    })();
+</script>

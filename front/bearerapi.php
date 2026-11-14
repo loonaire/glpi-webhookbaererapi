@@ -29,13 +29,14 @@
 
 use GlpiPlugin\Webhookbearerapi\BearerApi;
 
-include(__DIR__ . '/../../../inc/includes.php');
+// Since GLPI 11, the legacy front files are loaded by GLPI itself, with the session and the
+// configuration already initialized: `inc/includes.php` must no longer be included.
 
 Session::checkRight('config', READ);
 
 Html::header(
     BearerApi::getTypeName(Session::getPluralNumber()),
-    $_SERVER['PHP_SELF'],
+    '',
     'config',
     BearerApi::class
 );

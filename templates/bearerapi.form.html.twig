@@ -14,24 +14,19 @@
 {% block form_fields %}
     {{ parent() }}
 
+    {# A provider is a generic token server configuration: the webhooks choose the provider they
+       use on their own form ("API authentication source" field), see the "Webhooks" tab. #}
     {{ fields.smallTitle(__('Authentication', 'webhookbearerapi'), 'ti ti-lock') }}
-
-    {{ fields.dropdownField(
-        'Webhook',
-        'webhooks_id',
-        item.fields['webhooks_id']|default(0),
-        _n('Webhook', 'Webhooks', 1, 'webhookbearerapi'),
-        {
-            'toadd': {0: __('None')},
-            'rand': rand
-        }
-    ) }}
 
     {{ fields.urlField(
         'token_url',
         item.fields['token_url'],
         __('Token URL', 'webhookbearerapi'),
-        {'required': true, 'rand': rand}
+        {
+            'required': true,
+            'rand': rand,
+            'helper': __('URL of the token endpoint of the OAuth 2.0 server (e.g. "https://glpi.example.com/api.php/token" for GLPI). It is only used to get the token: the requests are sent to the target URL of each webhook.', 'webhookbearerapi')
+        }
     ) }}
 
     {{ fields.dropdownArrayField(
@@ -102,7 +97,10 @@
         'scope',
         item.fields['scope'],
         _n('Scope', 'Scopes', 1, 'webhookbearerapi'),
-        {'rand': rand}
+        {
+            'rand': rand,
+            'helper': __('Optional. OAuth 2.0 "scope" parameter sent with the token request: permissions requested for the token, as defined by the API (e.g. "api.read api.write" or "https://graph.microsoft.com/.default"). Separate several scopes with spaces. Leave empty if the token server does not require it.', 'webhookbearerapi')
+        }
     ) }}
 
     {{ fields.textareaField(
@@ -164,7 +162,7 @@
             'max': 86400,
             'step': 30,
             'rand': rand,
-            'add_field_html': '<span class="text-muted small">' ~ __('The token is renewed this much time before its expiration.', 'webhookbearerapi') ~ '</span>'
+            'add_field_html': '<span class="text-muted small">' ~ __('The token is renewed this much time before its expiration.', 'webhookbearerapi')|e ~ '</span>'
         }
     ) }}
 
@@ -202,13 +200,7 @@
             {% endif %}
         {% endset %}
 
+        {# The "Refresh token now" button is added to the form buttons (see BearerApi::showForm()). #}
         {{ fields.htmlField('_token_status', token_html, __('Token status', 'webhookbearerapi')) }}
-
-        <div class="col-12 col-xxl-6 d-flex align-items-end mb-3">
-            <button type="submit" name="refresh" value="1" class="btn btn-ghost-secondary">
-                <i class="ti ti-refresh"></i>
-                <span class="ms-1">{{ __('Refresh token now', 'webhookbearerapi') }}</span>
-            </button>
-        </div>
     {% endif %}
 {% endblock %}
