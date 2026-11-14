@@ -23,7 +23,7 @@ trap 'rm -rf "${tmp}"' EXIT
 
 xgettext "${OPTIONS[@]}" --language=PHP -o "${tmp}/php.pot" \
     --package-name=webhookbearerapi --package-version="${VERSION}" \
-    --msgid-bugs-address=https://github.com/loonaire/glpi-webhookbearerapi/issues \
+    --msgid-bugs-address=https://github.com/loonaire/glpi-webhookbaererapi/issues \
     setup.php hook.php src/*.php front/*.php
 # The Python lexer understands the `__('...', 'webhookbearerapi')` calls of the Twig templates.
 xgettext "${OPTIONS[@]}" --language=Python -o "${tmp}/twig.pot" templates/*.twig

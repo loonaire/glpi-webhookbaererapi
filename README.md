@@ -236,5 +236,5 @@ GPL v2 ou ultérieure (GPLv2+). Voir [LICENSE](LICENSE).
 ## Auteur & liens
 
 - Auteur : **Loonaire**
-- Dépôt : <https://github.com/loonaire/glpi-webhookbearerapi>
-- Version : 1.1 — compatible GLPI `~12.0.0`
+- Dépôt : <https://github.com/loonaire/glpi-webhookbaererapi>
+- Version : 1.1.1 — compatible GLPI `~12.0.0`

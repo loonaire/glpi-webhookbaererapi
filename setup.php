@@ -23,7 +23,7 @@
  * along with Webhook Bearer API. If not, see <http://www.gnu.org/licenses/>.
  * -------------------------------------------------------------------------
  * @license   GPLv2+ https://www.gnu.org/licenses/gpl-2.0.html
- * @link      https://github.com/loonaire/glpi-webhookbearerapi
+ * @link      https://github.com/loonaire/glpi-webhookbaererapi
  * -------------------------------------------------------------------------
  */
 
@@ -32,7 +32,7 @@ use Glpi\Config\ProxyExclusions;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Webhookbearerapi\BearerApi;
 
-define('PLUGIN_WEBHOOKBEARERAPI_VERSION', '1.1');
+define('PLUGIN_WEBHOOKBEARERAPI_VERSION', '1.1.1');
 
 // Minimal GLPI version, inclusive
 define('PLUGIN_WEBHOOKBEARERAPI_MIN_GLPI', '12.0.0');
@@ -115,7 +115,7 @@ function plugin_version_webhookbearerapi()
         'version'      => PLUGIN_WEBHOOKBEARERAPI_VERSION,
         'author'       => 'Loonaire',
         'license'      => 'GPLv2+',
-        'homepage'     => 'https://github.com/loonaire/glpi-webhookbearerapi',
+        'homepage'     => 'https://github.com/loonaire/glpi-webhookbaererapi',
         'requirements' => [
             'glpi' => [
                 'min' => PLUGIN_WEBHOOKBEARERAPI_MIN_GLPI,

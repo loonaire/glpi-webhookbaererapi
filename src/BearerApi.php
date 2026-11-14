@@ -23,7 +23,7 @@
  * along with Webhook Bearer API. If not, see <http://www.gnu.org/licenses/>.
  * -------------------------------------------------------------------------
  * @license   GPLv2+ https://www.gnu.org/licenses/gpl-2.0.html
- * @link      https://github.com/loonaire/glpi-webhookbearerapi
+ * @link      https://github.com/loonaire/glpi-webhookbaererapi
  * -------------------------------------------------------------------------
  */
 

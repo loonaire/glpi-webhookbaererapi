@@ -14,6 +14,14 @@ du projet [Keep a Changelog](http://keepachangelog.com/) ; ce projet suit la
 
 ### Retiré
 
+## [1.1.1] - 2026-11-14
+
+### Corrigé
+
+- Liens vers le dépôt GitHub (page d'accueil, releases, issues et README dans
+  `webhookbearerapi.xml` et dans la liste des plugins de GLPI) : ils pointaient vers
+  un dépôt inexistant.
+
 ## [1.1] - 2026-11-14
 
 ### Ajouté
